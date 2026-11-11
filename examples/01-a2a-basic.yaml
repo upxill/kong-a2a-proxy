@@ -1,0 +1,32 @@
+_format_version: "3.0"
+
+# 01 - Put Kong in front of an A2A agent with the AI A2A Proxy plugin.
+#
+#   Agent endpoint via Kong:  https://<proxy-url>/pet-agent
+#   Agent Card via Kong:      https://<proxy-url>/pet-agent/.well-known/agent-card.json
+#
+# What Kong adds: A2A detection (JSON-RPC + REST), Agent Card URL rewriting to the
+# gateway address, SSE pass-through, A2A metrics/logs.
+#
+# Replace the url with your agent's public URL (see agent/README.md).
+_info:
+  select_tags:
+    - a2a-example-01
+
+services:
+  - name: pet-agent
+    url: https://<your-agent-host>          # e.g. https://xyz.trycloudflare.com
+    read_timeout: 120000                    # long-running tasks / streaming
+    routes:
+      - name: pet-agent
+        paths:
+          - /pet-agent
+        strip_path: true
+        plugins:
+          - name: ai-a2a-proxy
+            config:
+              logging:
+                log_statistics: true        # A2A metrics in log output
+                log_payloads: false         # needs log_statistics: true
+                max_payload_size: 1048576   # bytes kept per logged payload (> 0)
+              max_request_body_size: 1048576  # bytes parsed for A2A metadata; 0 = unlimited

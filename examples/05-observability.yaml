@@ -1,0 +1,37 @@
+_format_version: "3.0"
+
+# 05 - Ship A2A telemetry: HTTP Log (JSON incl. ai.a2a fields) and OpenTelemetry traces
+#      (kong.a2a span). Point the endpoints at your collector.
+#
+# Note: with logging enabled, Kong removes Accept-Encoding from requests so responses
+# stay parseable.
+_info:
+  select_tags:
+    - a2a-example-05
+
+services:
+  - name: pet-agent-observed
+    url: https://<your-agent-host>
+    read_timeout: 120000
+    routes:
+      - name: pet-agent-observed
+        paths:
+          - /pet-agent-observed
+        strip_path: true
+        plugins:
+          - name: ai-a2a-proxy
+            config:
+              logging:
+                log_statistics: true
+                log_payloads: true          # full bodies, capped at max_payload_size
+                max_payload_size: 65536
+          - name: http-log
+            config:
+              http_endpoint: https://logs.example.com/kong   # receives ai.a2a.* fields
+              content_type: application/json
+          - name: opentelemetry
+            config:
+              traces_endpoint: https://otel.example.com/v1/traces
+              logs_endpoint: https://otel.example.com/v1/logs
+              resource_attributes:
+                service.name: kong-a2a-gateway

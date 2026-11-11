@@ -1,0 +1,37 @@
+_format_version: "3.0"
+
+# 03 - Agent-to-agent with OAuth 2.0 client credentials (OpenID Connect plugin).
+#
+# The calling agent gets a token from your IdP (client_credentials) and sends
+# "Authorization: Bearer <token>". Kong validates it and forwards the caller id.
+#
+#   export DECK_OIDC_CLIENT_SECRET=...
+_info:
+  select_tags:
+    - a2a-example-03
+
+services:
+  - name: pet-agent-oidc
+    url: https://<your-agent-host>
+    read_timeout: 120000
+    routes:
+      - name: pet-agent-oidc
+        paths:
+          - /pet-agent-oidc
+        strip_path: true
+        plugins:
+          - name: openid-connect
+            config:
+              issuer: https://login.example.com/realms/agents/.well-known/openid-configuration
+              client_id: [kong-gateway]
+              client_secret: [ '${{ env "DECK_OIDC_CLIENT_SECRET" }}' ]
+              auth_methods: [bearer, introspection]
+              scopes_required: [agents.invoke]
+              upstream_headers_claims: [sub, azp]
+              upstream_headers_names: [X-Caller-Sub, X-Caller-Client]
+          - name: ai-a2a-proxy
+            config:
+              logging:
+                log_statistics: true
+                log_payloads: false
+                max_payload_size: 1048576

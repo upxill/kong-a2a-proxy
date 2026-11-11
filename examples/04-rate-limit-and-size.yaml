@@ -1,0 +1,44 @@
+_format_version: "3.0"
+
+# 04 - Protect an agent from overload: per-consumer rate limits and body size limits.
+#
+#   export DECK_APP_KEY="$(openssl rand -hex 24)"
+_info:
+  select_tags:
+    - a2a-example-04
+
+consumers:
+  - username: busy-app
+    keyauth_credentials:
+      - key: ${{ env "DECK_APP_KEY" }}
+
+services:
+  - name: pet-agent-limited
+    url: https://<your-agent-host>
+    read_timeout: 120000
+    routes:
+      - name: pet-agent-limited
+        paths:
+          - /pet-agent-limited
+        strip_path: true
+        plugins:
+          - name: key-auth
+            config:
+              key_names: [apikey]
+          - name: rate-limiting
+            config:
+              minute: 30                    # tasks per minute per consumer
+              hour: 500
+              limit_by: consumer
+              policy: local
+          - name: request-size-limiting
+            config:
+              allowed_payload_size: 2       # MB; rejects oversized messages with 413
+              size_unit: megabytes
+          - name: ai-a2a-proxy
+            config:
+              logging:
+                log_statistics: true
+                log_payloads: false
+                max_payload_size: 1048576
+              max_request_body_size: 2097152

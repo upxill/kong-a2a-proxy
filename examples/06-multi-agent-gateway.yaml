@@ -1,0 +1,62 @@
+_format_version: "3.0"
+
+# 06 - One gateway, several agents. Each agent gets its own path, card and policies.
+#      An orchestrator agent discovers them via their cards and delegates tasks.
+#
+#   https://<proxy-url>/agents/pet-care/.well-known/agent-card.json
+#   https://<proxy-url>/agents/vet-booking/.well-known/agent-card.json
+#   https://<proxy-url>/agents/shop/.well-known/agent-card.json
+#
+# A shared key-auth on all three, so the orchestrator uses one gateway key.
+#   export DECK_ORCHESTRATOR_KEY="$(openssl rand -hex 24)"
+_info:
+  select_tags:
+    - a2a-example-06
+
+consumers:
+  - username: orchestrator
+    keyauth_credentials:
+      - key: ${{ env "DECK_ORCHESTRATOR_KEY" }}
+
+services:
+  - name: agent-pet-care
+    url: https://<pet-care-agent-host>
+    read_timeout: 120000
+    routes:
+      - name: agent-pet-care
+        paths: [/agents/pet-care]
+        strip_path: true
+        plugins:
+          - name: key-auth
+            config: {key_names: [apikey], hide_credentials: true}
+          - name: ai-a2a-proxy
+            config:
+              logging: {log_statistics: true, log_payloads: false, max_payload_size: 1048576}
+
+  - name: agent-vet-booking
+    url: https://<vet-booking-agent-host>
+    read_timeout: 120000
+    routes:
+      - name: agent-vet-booking
+        paths: [/agents/vet-booking]
+        strip_path: true
+        plugins:
+          - name: key-auth
+            config: {key_names: [apikey], hide_credentials: true}
+          - name: ai-a2a-proxy
+            config:
+              logging: {log_statistics: true, log_payloads: false, max_payload_size: 1048576}
+
+  - name: agent-shop
+    url: https://<shop-agent-host>
+    read_timeout: 120000
+    routes:
+      - name: agent-shop
+        paths: [/agents/shop]
+        strip_path: true
+        plugins:
+          - name: key-auth
+            config: {key_names: [apikey], hide_credentials: true}
+          - name: ai-a2a-proxy
+            config:
+              logging: {log_statistics: true, log_payloads: false, max_payload_size: 1048576}

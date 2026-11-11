@@ -1,0 +1,50 @@
+_format_version: "3.0"
+
+# 02 - Only approved apps (consumers in the "pet-apps" group) may call the agent. API key identifies the caller; the ACL plugin checks the group.
+#
+#   export DECK_ORCHESTRATOR_KEY="$(openssl rand -hex 24)"
+#   export DECK_OTHER_KEY="$(openssl rand -hex 24)"
+#
+#   orchestrator-agent  -> allowed (group pet-apps)
+#   other-app           -> 403 (not in group)
+_info:
+  select_tags:
+    - a2a-example-02
+
+consumer_groups:
+  - name: pet-apps
+
+consumers:
+  - username: orchestrator-agent
+    groups:
+      - name: pet-apps
+    keyauth_credentials:
+      - key: ${{ env "DECK_ORCHESTRATOR_KEY" }}
+  - username: other-app
+    keyauth_credentials:
+      - key: ${{ env "DECK_OTHER_KEY" }}
+
+services:
+  - name: pet-agent-secure
+    url: https://<your-agent-host>
+    read_timeout: 120000
+    routes:
+      - name: pet-agent-secure
+        paths:
+          - /pet-agent-secure
+        strip_path: true
+        plugins:
+          - name: key-auth
+            config:
+              key_names: [apikey]
+              hide_credentials: true        # the agent never sees the gateway key
+          - name: acl
+            config:
+              allow: [pet-apps]
+              include_consumer_groups: true
+          - name: ai-a2a-proxy
+            config:
+              logging:
+                log_statistics: true
+                log_payloads: false
+                max_payload_size: 1048576

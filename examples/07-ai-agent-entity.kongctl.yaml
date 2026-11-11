@@ -1,0 +1,39 @@
+# 07 - AI Gateway 2.0: the same agent as an AI Agent entity (type: a2a), managed with kongctl.
+#
+# Requires an AI Gateway WITH a working data plane (AI Gateway -> Data plane nodes).
+#
+#   export AI_GATEWAY_ID=<your AI Gateway id>
+#   kongctl apply -f examples/07-ai-agent-entity.kongctl.yaml
+#
+# Field names follow Kong's AI Agent entity docs (not checked against a live schema).
+# The logging key for statistics appears as both `log_statistics` and `statistics` in
+# Kong's docs; confirm in the Konnect UI before relying on it.
+ai_gateway_agents:
+  - ref: pet-care-agent
+    ai_gateway: !lookup {id: !env AI_GATEWAY_ID}
+    name: pet-care-agent
+    display_name: Pet Care Advisor
+    type: a2a                      # a2a = protocol-aware; http = plain pass-through
+    enabled: true
+    access:
+      acls:
+        allow: [pet-apps]          # AI Consumers, AI Consumer Groups or Authenticated Groups
+        # allow_when: 'request.headers["x-env"] == "prod"'   # CEL, Kong 3.16+ data planes
+    policies: []                   # AI Policy names/ids (not auth policies)
+    config:
+      url: https://<your-agent-host>
+      route:
+        paths: [/pet-care-agent]
+        methods: [GET, POST]
+        protocols: [https]
+        strip_path: true
+      max_request_body_size: 8388608
+      logging:
+        payloads: false
+        max_payload_size: 1048576
+      # Outbound auth to the agent, e.g. AWS Bedrock AgentCore Runtime:
+      # upstream:
+      #   auth:
+      #     type: aws
+      #     region: us-east-1
+      #     assume_role_arn: arn:aws:iam::123456789012:role/agentcore-invoke
